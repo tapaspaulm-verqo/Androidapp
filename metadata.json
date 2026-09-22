@@ -1,0 +1,6 @@
+{
+  "name": "Verqo",
+  "description": "India's tech freelance marketplace featuring Aadhaar/PAN KYC validation, milestone escrow protection, and dedicated freelancer/client dashboards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

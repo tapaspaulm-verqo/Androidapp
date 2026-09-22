@@ -1,0 +1,127 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile for freelancers and business clients",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["Freelancer", "Client"] },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "primaryRole": { "type": "string", "maxLength": 100 },
+        "experienceLevel": { "type": "string", "maxLength": 50 },
+        "isFullyVerified": { "type": "boolean" },
+        "panNumber": { "type": "string", "maxLength": 10 },
+        "aadhaarLast4": { "type": "string", "maxLength": 4 },
+        "companyName": { "type": "string", "maxLength": 150 },
+        "gstin": { "type": "string", "maxLength": 15 },
+        "plan": { "type": "string", "maxLength": 50 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "role", "displayName", "email"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "Tech freelance project posted by a client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "roleCategory": { "type": "string", "maxLength": 100 },
+        "channel": { "type": "string", "maxLength": 20 },
+        "budgetMinorMin": { "type": "number" },
+        "budgetMinorMax": { "type": "number" },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 150 },
+        "status": { "type": "string", "enum": ["Open", "InReview", "Closed"] },
+        "proposalCount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "roleCategory", "clientId", "status"]
+    },
+    "Proposal": {
+      "title": "Proposal",
+      "description": "Application submitted by a freelancer for a job post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "jobId": { "type": "string", "maxLength": 128 },
+        "freelancerId": { "type": "string", "maxLength": 128 },
+        "freelancerName": { "type": "string", "maxLength": 150 },
+        "coverNote": { "type": "string", "maxLength": 2000 },
+        "proposedRateMinor": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "jobId", "freelancerId", "freelancerName", "coverNote", "proposedRateMinor"]
+    },
+    "Contract": {
+      "title": "Contract",
+      "description": "Escrow agreement between a client and a freelancer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "jobId": { "type": "string", "maxLength": 128 },
+        "jobTitle": { "type": "string", "maxLength": 200 },
+        "clientId": { "type": "string", "maxLength": 128 },
+        "clientName": { "type": "string", "maxLength": 150 },
+        "freelancerId": { "type": "string", "maxLength": 128 },
+        "freelancerName": { "type": "string", "maxLength": 150 },
+        "scopeSummary": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["Active", "Completed", "Draft"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "clientId", "clientName", "freelancerId", "freelancerName", "status"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "Payment milestone within a contract",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "contractId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 200 },
+        "contractValueMinor": { "type": "number" },
+        "state": {
+          "type": "string",
+          "enum": [
+            "Unfunded",
+            "Funded",
+            "InProgress",
+            "Submitted",
+            "ApprovedReleased",
+            "Disputed",
+            "RefundedCancelled"
+          ]
+        },
+        "submittedAt": { "type": "string" },
+        "reviewDeadlineAt": { "type": "string" },
+        "releasedAt": { "type": "string" }
+      },
+      "required": ["id", "contractId", "title", "contractValueMinor", "state"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Public and private user profiles partitioned by userId"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Public marketplace job postings"
+    },
+    "/jobs/{jobId}/proposals/{proposalId}": {
+      "schema": "Proposal",
+      "description": "Proposals submitted to a specific job"
+    },
+    "/contracts/{contractId}": {
+      "schema": "Contract",
+      "description": "Contracts shared between the specified client and freelancer"
+    },
+    "/contracts/{contractId}/milestones/{milestoneId}": {
+      "schema": "Milestone",
+      "description": "Milestones belonging to a contract with escrow state tracking"
+    }
+  }
+}
