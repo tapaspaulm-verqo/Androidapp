@@ -19,25 +19,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [googleRole, setGoogleRole] = useState<'Freelancer' | 'Client'>('Freelancer');
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
-
-  const handleGoogleSignIn = async () => {
-    setError(null);
-    setIsGoogleLoading(true);
-    try {
-      await verqoStore.signInWithGoogle(googleRole);
-      setIsGoogleLoading(false);
-      onSuccess();
-      onClose();
-    } catch (err) {
-      setIsGoogleLoading(false);
-      setError(err instanceof Error ? err.message : 'Google authentication failed.');
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,66 +68,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           <p className="text-xs text-[#56524B] mt-1">
             Access your contracts, escrow balance, or job applications
           </p>
-        </div>
-
-        {/* Google Authentication via Firebase */}
-        <div className="mb-5 p-3.5 bg-white rounded-xl border border-[#E8E6DF] shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-semibold text-[#14130F]">
-              Sign in with Google:
-            </span>
-            <div className="flex gap-1 text-[11px]">
-              <button
-                type="button"
-                onClick={() => setGoogleRole('Freelancer')}
-                className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                  googleRole === 'Freelancer'
-                    ? 'bg-[#E3EEE8] text-[#1F5C46] font-semibold'
-                    : 'text-[#56524B] hover:bg-[#F7F6F3]'
-                }`}
-              >
-                Freelancer
-              </button>
-              <button
-                type="button"
-                onClick={() => setGoogleRole('Client')}
-                className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                  googleRole === 'Client'
-                    ? 'bg-[#F2EBF7] text-[#5B3E73] font-semibold'
-                    : 'text-[#56524B] hover:bg-[#F7F6F3]'
-                }`}
-              >
-                Client
-              </button>
-            </div>
-          </div>
-          <button
-            type="button"
-            id="btn-google-signin"
-            onClick={handleGoogleSignIn}
-            disabled={isGoogleLoading}
-            className="w-full py-2 px-3 rounded-lg border border-[#E8E6DF] hover:bg-[#F7F6F3] text-[#14130F] text-xs font-semibold flex items-center justify-center gap-2.5 transition-colors"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.65v3.03h3.88c2.27-2.09 3.665-5.17 3.665-9.12z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.03c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.13C3.26 21.36 7.33 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.28 14.29c-.25-.72-.38-1.49-.38-2.29s.13-1.57.38-2.29V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.13z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.13c.95-2.83 3.6-4.96 6.72-4.96z"
-              />
-            </svg>
-            <span>{isGoogleLoading ? 'Connecting to Google...' : `Continue with Google (${googleRole})`}</span>
-          </button>
         </div>
 
         {/* Quick Demo Pre-fill options */}

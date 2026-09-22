@@ -8,27 +8,6 @@ import {
   RegisterFreelancerResponse,
   RegisterClientResponse,
 } from '../types';
-import {
-  auth,
-  db,
-  googleProvider,
-  testConnection,
-  handleFirestoreError,
-  OperationType,
-} from './firebase';
-import {
-  signInWithPopup,
-  signOut as fbSignOut,
-  onAuthStateChanged,
-} from 'firebase/auth';
-import {
-  collection,
-  doc,
-  setDoc,
-  getDoc,
-  onSnapshot,
-  updateDoc,
-} from 'firebase/firestore';
 
 const STORAGE_KEY_USER = 'verqo.session.user';
 const STORAGE_KEY_TOKEN = 'verqo.session.token';
@@ -363,58 +342,6 @@ class VerqoStore {
     } catch {
       this.freelancers = INITIAL_FREELANCERS;
     }
-
-    // Initialize Firebase connectivity and live jobs listener
-    this.initFirebaseSync();
-  }
-
-  private initFirebaseSync() {
-    // 1. Mandatory test connection on boot
-    testConnection().catch((err) => {
-      console.warn('Initial Firestore connection check notice:', err);
-    });
-
-    // 2. Real-time jobs synchronization from Firestore
-    try {
-      const jobsCol = collection(db, 'jobs');
-      onSnapshot(
-        jobsCol,
-        (snapshot) => {
-          if (!snapshot.empty) {
-            const firestoreJobs: JobSummary[] = [];
-            snapshot.forEach((docSnap) => {
-              const data = docSnap.data();
-              firestoreJobs.push({
-                id: docSnap.id,
-                title: data.title || 'Untitled Project',
-                roleCategory: data.roleCategory || 'Engineering',
-                channel: data.channel || 'B2B',
-                budgetMinorMin: data.budgetMinorMin || null,
-                budgetMinorMax: data.budgetMinorMax || null,
-                clientName: data.clientName || 'Marketplace Client',
-                description: data.description || '',
-                postedAt: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : 'Recent',
-              });
-            });
-
-            // Merge with local jobs without duplicate ids
-            const updated = [...firestoreJobs];
-            for (const localJob of this.jobs) {
-              if (!updated.some((j) => j.id === localJob.id)) {
-                updated.push(localJob);
-              }
-            }
-            this.jobs = updated;
-            this.saveState();
-          }
-        },
-        (error) => {
-          handleFirestoreError(error, OperationType.LIST, 'jobs');
-        }
-      );
-    } catch (e) {
-      console.warn('Could not attach Firestore jobs listener:', e);
-    }
   }
 
   subscribe(listener: () => void): () => void {
@@ -462,12 +389,7 @@ class VerqoStore {
     this.notify();
   }
 
-  async logout() {
-    try {
-      await fbSignOut(auth);
-    } catch {
-      // Storage fail
-    }
+  logout() {
     this.user = null;
     this.token = null;
     try {
@@ -477,67 +399,6 @@ class VerqoStore {
       // Storage fail
     }
     this.notify();
-  }
-
-  // Real Firebase Google Login (per skill specification)
-  async signInWithGoogle(rolePreference: 'Freelancer' | 'Client' = 'Freelancer') {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const fbUser = result.user;
-      const uid = fbUser.uid;
-
-      // Check if user profile exists in Firestore
-      let userRole: 'Freelancer' | 'Client' = rolePreference;
-      let displayName = fbUser.displayName || 'Google User';
-
-      try {
-        const userDocRef = doc(db, 'users', uid);
-        const userDocSnap = await getDoc(userDocRef);
-
-        if (userDocSnap.exists()) {
-          const uData = userDocSnap.data();
-          if (uData.role === 'Freelancer' || uData.role === 'Client') {
-            userRole = uData.role;
-          }
-          if (uData.displayName) {
-            displayName = uData.displayName;
-          }
-        } else {
-          // Initialize user profile in Firestore
-          await setDoc(userDocRef, {
-            userId: uid,
-            role: userRole,
-            displayName,
-            email: fbUser.email || '',
-            primaryRole: userRole === 'Freelancer' ? 'Fullstack Engineer' : '',
-            isFullyVerified: true,
-            createdAt: new Date().toISOString(),
-          });
-        }
-      } catch (dbErr) {
-        console.warn('Note: Profile write to Firestore completed or skipped:', dbErr);
-      }
-
-      const idToken = await fbUser.getIdToken();
-      this.setSession({
-        token: idToken,
-        expiresAt: new Date(Date.now() + 86400000).toISOString(),
-        user: {
-          id: uid,
-          email: fbUser.email || 'user@example.com',
-          role: userRole,
-          displayName,
-          freelancerProfileId: userRole === 'Freelancer' ? `fp-${uid.slice(0, 8)}` : null,
-          clientProfileId: userRole === 'Client' ? `cp-${uid.slice(0, 8)}` : null,
-          isFullyVerified: true,
-        },
-      });
-
-      return { success: true, role: userRole };
-    } catch (error) {
-      console.error('Firebase Google Sign-In error:', error);
-      throw error;
-    }
   }
 
   // Quick switch for demo testing
@@ -750,29 +611,6 @@ class VerqoStore {
     });
     this.clientData.openJobsCount = this.clientData.postedJobs.length;
     this.saveState();
-
-    // Firestore replication
-    try {
-      const clientId = this.user?.id || 'u-client-1';
-      setDoc(doc(db, 'jobs', newJobId), {
-        id: newJobId,
-        title: draft.title,
-        description: draft.description,
-        roleCategory: draft.roleCategory,
-        channel: 'B2B',
-        budgetMinorMin: draft.budgetMinorMin || 0,
-        budgetMinorMax: draft.budgetMinorMax || 0,
-        clientId,
-        clientName: this.clientData.companyName,
-        status: 'Open',
-        proposalCount: 0,
-        createdAt: new Date().toISOString(),
-      }).catch((err) => {
-        console.warn('Firestore job write skipped or caught:', err);
-      });
-    } catch (err) {
-      console.warn('Firestore write error:', err);
-    }
   }
 
   submitProposal(jobId: string, coverNote: string, proposedRateMinor: number) {
@@ -784,25 +622,6 @@ class VerqoStore {
       }
     }
     this.saveState();
-
-    // Firestore replication
-    try {
-      const proposalId = `prop-${Date.now()}`;
-      const freelancerId = this.user?.id || 'u-freelancer-1';
-      setDoc(doc(db, 'jobs', jobId, 'proposals', proposalId), {
-        id: proposalId,
-        jobId,
-        freelancerId,
-        freelancerName: this.freelancerData.displayName,
-        coverNote,
-        proposedRateMinor,
-        createdAt: new Date().toISOString(),
-      }).catch((err) => {
-        console.warn('Firestore proposal write skipped or caught:', err);
-      });
-    } catch (err) {
-      console.warn('Firestore write error:', err);
-    }
   }
 
   registerFreelancer(data: {
@@ -834,23 +653,6 @@ class VerqoStore {
     });
 
     this.saveState();
-
-    // Firestore user profile save
-    try {
-      setDoc(doc(db, 'users', userId), {
-        userId,
-        role: 'Freelancer',
-        displayName: data.displayName,
-        email: data.email,
-        primaryRole: data.primaryRole,
-        isFullyVerified: isVerified,
-        panNumber: data.panNumber,
-        aadhaarLast4: data.aadhaarNumber.slice(-4),
-        createdAt: new Date().toISOString(),
-      }).catch((e) => console.warn('Profile write notice:', e));
-    } catch (e) {
-      console.warn('Profile write notice:', e);
-    }
 
     return {
       userId,
@@ -885,23 +687,6 @@ class VerqoStore {
     });
 
     this.saveState();
-
-    // Firestore user profile save
-    try {
-      setDoc(doc(db, 'users', userId), {
-        userId,
-        role: 'Client',
-        displayName: data.companyName,
-        email: data.email,
-        companyName: data.companyName,
-        gstin: data.gstin || '',
-        plan: 'Standard',
-        isFullyVerified: true,
-        createdAt: new Date().toISOString(),
-      }).catch((e) => console.warn('Client profile write notice:', e));
-    } catch (e) {
-      console.warn('Client profile write notice:', e);
-    }
 
     return {
       userId,
